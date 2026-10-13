@@ -1,0 +1,164 @@
+[
+  {
+    "anchor": "introduction",
+    "level": 3,
+    "text": "Introduction",
+    "translated_in": "content/ch00.md"
+  },
+  {
+    "anchor": "overview-of-quantization",
+    "level": 3,
+    "text": "Overview of Quantization",
+    "translated_in": "content/ch01.md"
+  },
+  {
+    "anchor": "dynamic-quantization-kernels",
+    "level": 3,
+    "text": "Dynamic Quantization Kernels",
+    "translated_in": "content/ch02.md"
+  },
+  {
+    "anchor": "weight-only-quantization-kernels",
+    "level": 3,
+    "text": "Weight-only Quantization Kernels",
+    "translated_in": "content/ch03.md"
+  },
+  {
+    "anchor": "int4-weight-only-quantization-kernels",
+    "level": 3,
+    "text": "INT4 Weight-only Quantization Kernels",
+    "translated_in": "content/ch04.md"
+  },
+  {
+    "anchor": "strengths-and-limitations-of-triton",
+    "level": 3,
+    "text": "Strengths and Limitations of Triton",
+    "translated_in": "content/ch05.md"
+  },
+  {
+    "anchor": "qa-session",
+    "level": 3,
+    "text": "Q&A Session",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "motivation-and-comparison-with-other-libraries",
+    "level": 4,
+    "text": "Motivation and Comparison with Other Libraries",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "reasons-for-developing-native-pytorch-quantization",
+    "level": 5,
+    "text": "Reasons for Developing Native PyTorch Quantization",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "comparison-with-bitsandbytes",
+    "level": 5,
+    "text": "Comparison with BitsandBytes",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "comparison-with-other-quantization-libraries",
+    "level": 5,
+    "text": "Comparison with Other Quantization Libraries",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "hardware-support-and-integration",
+    "level": 4,
+    "text": "Hardware Support and Integration",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "nvidia-kernels-and-data-types",
+    "level": 5,
+    "text": "Nvidia Kernels and Data Types",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "amd-support",
+    "level": 5,
+    "text": "AMD Support",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "mac-support",
+    "level": 5,
+    "text": "Mac Support",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "triton-usage-and-development",
+    "level": 4,
+    "text": "Triton Usage and Development",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "triton-installation",
+    "level": 5,
+    "text": "Triton Installation",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "tritons-openness-and-future",
+    "level": 5,
+    "text": "Triton’s Openness and Future",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "technical-deep-dive-into-quantization",
+    "level": 4,
+    "text": "Technical Deep Dive into Quantization",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "accumulation-data-type-selection",
+    "level": 5,
+    "text": "Accumulation Data Type Selection",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "one-bit-quantization",
+    "level": 5,
+    "text": "One-Bit Quantization",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "weight-distribution-analysis",
+    "level": 5,
+    "text": "Weight Distribution Analysis",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "quantization-for-speculative-decoding",
+    "level": 5,
+    "text": "Quantization for Speculative Decoding",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "future-directions-and-insights",
+    "level": 4,
+    "text": "Future Directions and Insights",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "scaling-vs.-optimization",
+    "level": 5,
+    "text": "Scaling vs. Optimization",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "layer-specific-optimization",
+    "level": 5,
+    "text": "Layer-Specific Optimization",
+    "translated_in": "content/ch06.md"
+  },
+  {
+    "anchor": "accuracy-metrics",
+    "level": 5,
+    "text": "Accuracy Metrics",
+    "translated_in": "content/ch06.md"
+  }
+]

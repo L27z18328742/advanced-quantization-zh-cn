@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 4 章　INT4 仅权重量化内核 — 进阶量化 · GPU MODE</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/style.css"></head>
+<body>
+<header class="topbar"><a class="brand" href="../index.html">进阶量化 · GPU MODE<span>Triton 与 CUDA</span></a>
+<nav class="chapnav"><a href="../all.html">全文阅读</a><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/">英文原文 ↗</a></nav></header>
+<div class="layout"><aside class="sidebar"><nav class="toc" id="toc"><h2>章节导航</h2>
+<ol class="book-toc"><li><a href="ch00.html">导论 · GPU MODE 第 7 讲：进阶量化</a></li><li><a href="ch01.html">第 1 章 · 量化概览</a></li><li><a href="ch02.html">第 2 章 · 动态量化内核</a></li><li><a href="ch03.html">第 3 章 · 仅权重量化内核</a></li><li><a href="ch04.html">第 4 章 · INT4 仅权重量化内核</a></li><li><a href="ch05.html">第 5 章 · Triton 的优势与局限</a></li><li><a href="ch06.html">第 6 章 · 问答环节</a></li><li><a href="references.html">附录 · 作者介绍、术语与来源</a></li></ol><h2>本页目录</h2></nav></aside>
+<main class="main"><article id="content" class="prose"></article>
+<noscript>此页需要 JavaScript 排版。也可直接阅读目录中的完整译文 Markdown 文件。</noscript>
+<nav class="pager"><a class="prev" href="ch03.html"><span class="dir">← 上一章</span><div class="ttl">第 3 章　仅权重量化内核</div></a><a class="next" href="ch05.html"><span class="dir">下一章 →</span><div class="ttl">第 5 章　Triton 的优势与局限</div></a></nav>
+<footer class="pagefoot">原作者 Christian Mills · 2024-09-10 · 非官方中文译本 ·
+依据用户提供的 HTML 制作 · 保留原文署名与权利说明</footer></main></div>
+<script type="application/json" id="chapter-data">"# 第 4 章　INT4 仅权重量化内核（INT4 Weight-only Quantization Kernels）\n\n> 译自 Christian Mills 的 [GPU MODE 第 7 讲](https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#int4-weight-only-quantization-kernels)，原文发表于 2024 年 9 月 10 日。\n\n\u003ca id=\"int4-weight-only-quantization-kernels\">\u003c/a>\n\n## INT4 仅权重量化内核（INT4 Weight-only Quantization Kernels）\n\n- **挑战**：\n  - PyTorch 和 Triton Lang 当时没有原生 INT4 数据类型。\n  - 需要手动将 INT4 数值打包进 INT8，并在使用时解包，这会引入开销。\n  - 理想情况是：直接将 INT4 数值与 BF16 激活相乘，无须显式类型转换。\n- **基于 Triton 的方法**：\n  - **打包**：采用不同的打包方案，将两个 INT4 数值存进一个 INT8。\n  - **内核实现**：编写自定义 Triton 内核，处理打包后的 INT4 乘法。\n- **结果**：非常慢，与前面的朴素仅权重量化方法相当。\n- **CUDA 内核，原文标作 FastINT8**：\n  - PyTorch GPU 后端开发者 Jeff Johnson 为 INT4 仅权重量化开发了一个高度优化的 CUDA 内核。\n- **结果**：\n  - **性能**：速度极快，超过了前面所有方法。\n  - 达到了当时 INT4 量化的领先性能水平。\n- **关键结论**：面对复杂操作和自定义数据类型，高度优化的 CUDA 内核可以显著超过基于 Triton 的方案。在这些场景下，Triton 的局限会更加明显。\n\n> **译者注**：原文在 INT4 小节中把 CUDA 内核标作“FastINT8”，命名与上下文存在不一致。这里明确保留原文名称，没有擅自将其改成一个未经确认的项目名。原文没有在本节给出具体吞吐量或完整测试配置，“领先性能”应按讲座当时的对比场景理解。\n"</script>
+<script src="../assets/marked.min.js"></script><script src="../assets/app.js"></script>
+</body></html>

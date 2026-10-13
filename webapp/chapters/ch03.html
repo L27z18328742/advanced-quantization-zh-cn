@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 3 章　仅权重量化内核 — 进阶量化 · GPU MODE</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/style.css"></head>
+<body>
+<header class="topbar"><a class="brand" href="../index.html">进阶量化 · GPU MODE<span>Triton 与 CUDA</span></a>
+<nav class="chapnav"><a href="../all.html">全文阅读</a><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/">英文原文 ↗</a></nav></header>
+<div class="layout"><aside class="sidebar"><nav class="toc" id="toc"><h2>章节导航</h2>
+<ol class="book-toc"><li><a href="ch00.html">导论 · GPU MODE 第 7 讲：进阶量化</a></li><li><a href="ch01.html">第 1 章 · 量化概览</a></li><li><a href="ch02.html">第 2 章 · 动态量化内核</a></li><li><a href="ch03.html">第 3 章 · 仅权重量化内核</a></li><li><a href="ch04.html">第 4 章 · INT4 仅权重量化内核</a></li><li><a href="ch05.html">第 5 章 · Triton 的优势与局限</a></li><li><a href="ch06.html">第 6 章 · 问答环节</a></li><li><a href="references.html">附录 · 作者介绍、术语与来源</a></li></ol><h2>本页目录</h2></nav></aside>
+<main class="main"><article id="content" class="prose"></article>
+<noscript>此页需要 JavaScript 排版。也可直接阅读目录中的完整译文 Markdown 文件。</noscript>
+<nav class="pager"><a class="prev" href="ch02.html"><span class="dir">← 上一章</span><div class="ttl">第 2 章　动态量化内核</div></a><a class="next" href="ch04.html"><span class="dir">下一章 →</span><div class="ttl">第 4 章　INT4 仅权重量化内核</div></a></nav>
+<footer class="pagefoot">原作者 Christian Mills · 2024-09-10 · 非官方中文译本 ·
+依据用户提供的 HTML 制作 · 保留原文署名与权利说明</footer></main></div>
+<script type="application/json" id="chapter-data">"# 第 3 章　仅权重量化内核（Weight-only Quantization Kernels）\n\n> 译自 Christian Mills 的 [GPU MODE 第 7 讲](https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-only-quantization-kernels)，原文发表于 2024 年 9 月 10 日。\n\n\u003ca id=\"weight-only-quantization-kernels\">\u003c/a>\n\n## 仅权重量化内核（Weight-only Quantization Kernels）\n\n- **最初的方法，朴素实现**：\n  - 沿用动态量化中的矩阵乘法内核，但将激活的数据类型改为 BF16。\n  - 加载 INT8 权重，将其转换成 BF16，与 BF16 激活相乘，用 FP32 累加，最后重新缩放。\n- **结果**：非常慢，甚至比未量化的矩阵乘法还慢。\n- **分析**：\n  - 增加了工作量，包括整数加载、类型转换和重新缩放。\n  - Triton 的 Tensor Core 内核在块大小方面可能存在限制。\n- **解决办法，Torch Compile 的“魔法”**：\n  - 将矩阵乘法改写为逐元素相乘，再进行求和。\n  - 对应表达式：`torch.sum(x.unsqueeze(-1) * w, dim=-2)`。\n- **结果**：\n  - **性能**：速度非常快，显著超过前述仅权重量化实现和未量化的矩阵乘法。\n- **分析**：\n  - Torch Compile 生成了一个高效的 Triton 内核，它没有使用 Tensor Core。\n  - 权重矩阵 `w` 的每一列由单独的线程处理，因此具有很高的并行度。\n  - 使用 FP32 累加，这一点仍可能存在进一步优化的空间。\n- **局限**：\n  - 只适用于批量大小为 1 的情况，也就是这里讨论的内存带宽受限场景。\n  - 批量大小大于 1 时，需要同时对激活矩阵和权重矩阵进行索引，使问题转向计算受限，实现起来更有挑战。\n- **关键结论**：对于特定的表达方式，Torch Compile 有时能生成效率出乎意料的内核，体现出它的优化潜力。\n\n> **译者注**：“只适用于批量大小为 1”和“批量大于 1 时转向计算受限”描述的是本节尝试的实现及其场景，不能泛化为所有仅权重量化内核的限制，或所有 GPU 工作负载的统一分界线。本次只保留表达式，没有把它扩写为未经验证的完整内核。\n"</script>
+<script src="../assets/marked.min.js"></script><script src="../assets/app.js"></script>
+</body></html>

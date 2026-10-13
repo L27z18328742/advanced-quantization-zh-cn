@@ -1,0 +1,162 @@
+[
+  {
+    "page": "index.html",
+    "width": 1440,
+    "title": "进阶量化 · GPU MODE — Triton 与 CUDA",
+    "images": 0,
+    "textCharacters": 0,
+    "checks": "passed"
+  },
+  {
+    "page": "all.html",
+    "width": 1440,
+    "title": "完整译文 — 进阶量化 · GPU MODE",
+    "images": 3,
+    "textCharacters": 12051,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch00.html",
+    "width": 1440,
+    "title": "导论　GPU MODE 第 7 讲：进阶量化 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 996,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch01.html",
+    "width": 1440,
+    "title": "第 1 章　量化概览 — 进阶量化 · GPU MODE",
+    "images": 2,
+    "textCharacters": 1391,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch02.html",
+    "width": 1440,
+    "title": "第 2 章　动态量化内核 — 进阶量化 · GPU MODE",
+    "images": 1,
+    "textCharacters": 841,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch03.html",
+    "width": 1440,
+    "title": "第 3 章　仅权重量化内核 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 857,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch04.html",
+    "width": 1440,
+    "title": "第 4 章　INT4 仅权重量化内核 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 747,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch05.html",
+    "width": 1440,
+    "title": "第 5 章　Triton 的优势与局限 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 526,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch06.html",
+    "width": 1440,
+    "title": "第 6 章　问答环节 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 4740,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/references.html",
+    "width": 1440,
+    "title": "附录　作者介绍、术语与来源 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 1946,
+    "checks": "passed"
+  },
+  {
+    "page": "index.html",
+    "width": 390,
+    "title": "进阶量化 · GPU MODE — Triton 与 CUDA",
+    "images": 0,
+    "textCharacters": 0,
+    "checks": "passed"
+  },
+  {
+    "page": "all.html",
+    "width": 390,
+    "title": "完整译文 — 进阶量化 · GPU MODE",
+    "images": 3,
+    "textCharacters": 12051,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch00.html",
+    "width": 390,
+    "title": "导论　GPU MODE 第 7 讲：进阶量化 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 996,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch01.html",
+    "width": 390,
+    "title": "第 1 章　量化概览 — 进阶量化 · GPU MODE",
+    "images": 2,
+    "textCharacters": 1391,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch02.html",
+    "width": 390,
+    "title": "第 2 章　动态量化内核 — 进阶量化 · GPU MODE",
+    "images": 1,
+    "textCharacters": 841,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch03.html",
+    "width": 390,
+    "title": "第 3 章　仅权重量化内核 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 857,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch04.html",
+    "width": 390,
+    "title": "第 4 章　INT4 仅权重量化内核 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 747,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch05.html",
+    "width": 390,
+    "title": "第 5 章　Triton 的优势与局限 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 526,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/ch06.html",
+    "width": 390,
+    "title": "第 6 章　问答环节 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 4740,
+    "checks": "passed"
+  },
+  {
+    "page": "chapters/references.html",
+    "width": 390,
+    "title": "附录　作者介绍、术语与来源 — 进阶量化 · GPU MODE",
+    "images": 0,
+    "textCharacters": 1946,
+    "checks": "passed"
+  }
+]

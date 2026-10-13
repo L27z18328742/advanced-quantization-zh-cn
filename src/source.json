@@ -1,0 +1,254 @@
+{
+  "source_file": "/Users/lezewei/Downloads/GPU MODE Lecture 7_ Advanced Quantization – Christian Mills.html",
+  "source_url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/",
+  "source_type": "user-provided saved HTML",
+  "published": "2024-09-10",
+  "translated": "2026-09-20",
+  "sha256": "439f0580b8f624ce1522b14ea32b8282791c877a40bbf403b37dba8d26797a68",
+  "headings": [
+    {
+      "anchor": "introduction",
+      "level": 3,
+      "text": "Introduction"
+    },
+    {
+      "anchor": "overview-of-quantization",
+      "level": 3,
+      "text": "Overview of Quantization"
+    },
+    {
+      "anchor": "dynamic-quantization-kernels",
+      "level": 3,
+      "text": "Dynamic Quantization Kernels"
+    },
+    {
+      "anchor": "weight-only-quantization-kernels",
+      "level": 3,
+      "text": "Weight-only Quantization Kernels"
+    },
+    {
+      "anchor": "int4-weight-only-quantization-kernels",
+      "level": 3,
+      "text": "INT4 Weight-only Quantization Kernels"
+    },
+    {
+      "anchor": "strengths-and-limitations-of-triton",
+      "level": 3,
+      "text": "Strengths and Limitations of Triton"
+    },
+    {
+      "anchor": "qa-session",
+      "level": 3,
+      "text": "Q&A Session"
+    },
+    {
+      "anchor": "motivation-and-comparison-with-other-libraries",
+      "level": 4,
+      "text": "Motivation and Comparison with Other Libraries"
+    },
+    {
+      "anchor": "reasons-for-developing-native-pytorch-quantization",
+      "level": 5,
+      "text": "Reasons for Developing Native PyTorch Quantization"
+    },
+    {
+      "anchor": "comparison-with-bitsandbytes",
+      "level": 5,
+      "text": "Comparison with BitsandBytes"
+    },
+    {
+      "anchor": "comparison-with-other-quantization-libraries",
+      "level": 5,
+      "text": "Comparison with Other Quantization Libraries"
+    },
+    {
+      "anchor": "hardware-support-and-integration",
+      "level": 4,
+      "text": "Hardware Support and Integration"
+    },
+    {
+      "anchor": "nvidia-kernels-and-data-types",
+      "level": 5,
+      "text": "Nvidia Kernels and Data Types"
+    },
+    {
+      "anchor": "amd-support",
+      "level": 5,
+      "text": "AMD Support"
+    },
+    {
+      "anchor": "mac-support",
+      "level": 5,
+      "text": "Mac Support"
+    },
+    {
+      "anchor": "triton-usage-and-development",
+      "level": 4,
+      "text": "Triton Usage and Development"
+    },
+    {
+      "anchor": "triton-installation",
+      "level": 5,
+      "text": "Triton Installation"
+    },
+    {
+      "anchor": "tritons-openness-and-future",
+      "level": 5,
+      "text": "Triton’s Openness and Future"
+    },
+    {
+      "anchor": "technical-deep-dive-into-quantization",
+      "level": 4,
+      "text": "Technical Deep Dive into Quantization"
+    },
+    {
+      "anchor": "accumulation-data-type-selection",
+      "level": 5,
+      "text": "Accumulation Data Type Selection"
+    },
+    {
+      "anchor": "one-bit-quantization",
+      "level": 5,
+      "text": "One-Bit Quantization"
+    },
+    {
+      "anchor": "weight-distribution-analysis",
+      "level": 5,
+      "text": "Weight Distribution Analysis"
+    },
+    {
+      "anchor": "quantization-for-speculative-decoding",
+      "level": 5,
+      "text": "Quantization for Speculative Decoding"
+    },
+    {
+      "anchor": "future-directions-and-insights",
+      "level": 4,
+      "text": "Future Directions and Insights"
+    },
+    {
+      "anchor": "scaling-vs.-optimization",
+      "level": 5,
+      "text": "Scaling vs. Optimization"
+    },
+    {
+      "anchor": "layer-specific-optimization",
+      "level": 5,
+      "text": "Layer-Specific Optimization"
+    },
+    {
+      "anchor": "accuracy-metrics",
+      "level": 5,
+      "text": "Accuracy Metrics"
+    }
+  ],
+  "code": [
+    "torch.compile()",
+    "Y = X.W",
+    "Y = Sx * Sw * (Xint.Wint)",
+    "Xint",
+    "Wint",
+    "x",
+    "w",
+    "sw",
+    "config.force_fuse_int_mm_with_mul = True",
+    "torch/_inductor/kernel/mm.py",
+    "tuned_fused_int_mm_mul",
+    "torch.sum(x.unsqueeze(-1) * w, dim=-2)",
+    "w"
+  ],
+  "links": [
+    {
+      "text": "notes",
+      "url": "https://christianjmills.com/blog.html#category=notes"
+    },
+    {
+      "text": "cuda",
+      "url": "https://christianjmills.com/blog.html#category=cuda"
+    },
+    {
+      "text": "GPU MODE Lecture Notes",
+      "url": "https://christianjmills.com/series/notes/cuda-mode-notes.html"
+    },
+    {
+      "text": "Introduction",
+      "url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#introduction"
+    },
+    {
+      "text": "Overview of Quantization",
+      "url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#overview-of-quantization"
+    },
+    {
+      "text": "Dynamic Quantization Kernels",
+      "url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#dynamic-quantization-kernels"
+    },
+    {
+      "text": "Weight-only Quantization Kernels",
+      "url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-only-quantization-kernels"
+    },
+    {
+      "text": "INT4 Weight-only Quantization Kernels",
+      "url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#int4-weight-only-quantization-kernels"
+    },
+    {
+      "text": "Strengths and Limitations of Triton",
+      "url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#strengths-and-limitations-of-triton"
+    },
+    {
+      "text": "Q&A Session",
+      "url": "https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#qa-session"
+    },
+    {
+      "text": "Lecture 7 Advanced Quantization",
+      "url": "https://www.youtube.com/watch?v=1u9xUK3G4VM"
+    },
+    {
+      "text": "Quantization Cuda vs Triton",
+      "url": "https://www.dropbox.com/scl/fi/hzfx1l267m8gwyhcjvfk4/Quantization-Cuda-vs-Triton.pdf?rlkey=s4j64ivi2kpp2l0uq8xjdwbab&e=1&dl=0"
+    },
+    {
+      "text": "PyTorch AO",
+      "url": "https://github.com/pytorch/ao"
+    },
+    {
+      "text": "Matrix Multiplication",
+      "url": "https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html"
+    },
+    {
+      "text": "tuned_fused_int_mm_mul",
+      "url": "https://github.com/pytorch/pytorch/blob/26e5572dd24acd69b08eb94577f8796a480c9fe0/torch/_inductor/kernel/mm.py#L757"
+    },
+    {
+      "text": "Quanto",
+      "url": "https://huggingface.co/blog/quanto-introduction"
+    },
+    {
+      "text": "Quick AI Project Assessment",
+      "url": "https://docs.google.com/forms/d/e/1FAIpQLScKDKPJF9Be47LA3nrEDXTVpzH2UMLz8SzHMHM9hWT5qlvjkw/viewform?usp=sf_link"
+    },
+    {
+      "text": "about my approach",
+      "url": "https://christianjmills.com/about.html"
+    }
+  ],
+  "images": [
+    {
+      "path": "webapp/assets/images/dynamic-quantization-flow.png",
+      "user_file": "/Users/lezewei/Downloads/GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/dynamic-quantization-flow.png",
+      "sha256": "d74c2f2a8052b2fe8a67157aa7f14b74206b9afe07c97136702f893baef3c6f4",
+      "bytes": 60331
+    },
+    {
+      "path": "webapp/assets/images/weight-only-quantization-flow.png",
+      "user_file": "/Users/lezewei/Downloads/GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/weight-only-quantization-flow.png",
+      "sha256": "cb9226dedf4f7f3f5b7bb789b65346e017e7eb21974248f22e15779a6f2aeedf",
+      "bytes": 52787
+    },
+    {
+      "path": "webapp/assets/images/dynamic-quantization-slide-7.png",
+      "user_file": "/Users/lezewei/Downloads/GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/dynamic-quantization-slide-7.png",
+      "sha256": "23a31c6a45385b0eaabeedd7b205f2a3b903fbdddfdad206d52cf4ad9b548de6",
+      "bytes": 200911
+    }
+  ]
+}

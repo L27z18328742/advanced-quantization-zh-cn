@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<!-- saved from url=(0062)https://christianjmills.com/posts/cuda-mode-notes/lecture-007/ -->
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en" data-immersive-translate-page-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style>
+    .utterances {
+      position: relative;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .utterances-frame {
+      color-scheme: light;
+      position: absolute;
+      left: 0;
+      right: 0;
+      width: 1px;
+      min-width: 100%;
+      max-width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  </style>
+
+
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Christian Mills">
+<meta name="dcterms.date" content="2024-09-10">
+<meta name="description" content="Lecture #7 discusses GPU quantization techniques in PyTorch, focusing on performance optimizations using Triton and CUDA kernels for dynamic and weight-only quantization, including challenges and future directions.">
+
+<title>GPU MODE Lecture 7: Advanced Quantization – Christian Mills</title>
+<style class="anchorjs"></style><style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/quarto-nav.js"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/headroom.min.js"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/clipboard.min.js"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/autocomplete.umd.js"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/fuse.min.js"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<link href="https://christianjmills.com/images/favicon.ico" rel="icon">
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/quarto.js" type="module"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/tabsets.js" type="module"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/popper.min.js"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/tippy.umd.min.js"></script>
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/anchor.min.js"></script>
+<link href="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/tippy.css" rel="stylesheet">
+<link href="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="https://christianjmills.com/site_libs/quarto-html/quarto-syntax-highlighting-dark-b85bc7c33db8c58e0ec93c3465666fed.css" rel="disabled-stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="disabled-stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/bootstrap.min.js"></script>
+<link href="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/bootstrap-icons.css" rel="stylesheet">
+<link href="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/bootstrap-82f0ccf666304c8119fbeb49eb1f0d0c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="https://christianjmills.com/site_libs/bootstrap/bootstrap-dark-58a54eacf382eb0b4f979819185c5ead.min.css" rel="disabled-stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/bootstrap-82f0ccf666304c8119fbeb49eb1f0d0c.min.css" rel="disabled-stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/styles.css">
+<meta property="og:title" content="GPU MODE Lecture 7: Advanced Quantization – Christian Mills">
+<meta property="og:description" content="Lecture #7 discusses GPU quantization techniques in PyTorch, focusing on performance optimizations using Triton and CUDA kernels for dynamic and weight-only quantization, including challenges and future directions.">
+<meta property="og:image" content="https://christianjmills.com/images/default-preview-image-black.png">
+<meta property="og:site_name" content="Christian Mills">
+<meta property="og:image:height" content="284">
+<meta property="og:image:width" content="526">
+<meta name="twitter:title" content="GPU MODE Lecture 7: Advanced Quantization – Christian Mills">
+<meta name="twitter:description" content="Lecture #7 discusses GPU quantization techniques in PyTorch, focusing on performance optimizations using Triton and CUDA kernels for dynamic and weight-only quantization, including challenges and future directions.">
+<meta name="twitter:image" content="https://christianjmills.com/images/default-preview-image-black.png">
+<meta name="twitter:creator" content="@cdotjdotmills">
+<meta name="twitter:site" content="@cdotjdotmills">
+<meta name="twitter:image-height" content="284">
+<meta name="twitter:image-width" content="526">
+<meta name="twitter:card" content="summary_large_image">
+<style id="quarto-target-style">
+      section:target::before {
+        content: "";
+        display: block;
+        height: 62px;
+        margin: -62px 0 0;
+      }</style></head>
+
+<body class="nav-fixed quarto-light" data-bs-offset="62" style="padding-top: 62px;"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top headroom--not-top headroom--not-bottom headroom--pinned">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="https://christianjmills.com/" data-original-href="https://christianjmills.com/index.html">
+    <span class="navbar-title">Christian Mills</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="type-overlay" title="Search"><div class="aa-Autocomplete" aria-label="Search" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-labelledby="autocomplete-0-label"><button type="button" class="aa-DetachedSearchButton" title="Search" id="autocomplete-0-label"><div class="aa-DetachedSearchButtonIcon"><svg class="aa-SubmitIcon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M16.041 15.856c-0.034 0.026-0.067 0.055-0.099 0.087s-0.060 0.064-0.087 0.099c-1.258 1.213-2.969 1.958-4.855 1.958-1.933 0-3.682-0.782-4.95-2.050s-2.050-3.017-2.050-4.95 0.782-3.682 2.050-4.95 3.017-2.050 4.95-2.050 3.682 0.782 4.95 2.050 2.050 3.017 2.050 4.95c0 1.886-0.745 3.597-1.959 4.856zM21.707 20.293l-3.675-3.675c1.231-1.54 1.968-3.493 1.968-5.618 0-2.485-1.008-4.736-2.636-6.364s-3.879-2.636-6.364-2.636-4.736 1.008-6.364 2.636-2.636 3.879-2.636 6.364 1.008 4.736 2.636 6.364 3.879 2.636 6.364 2.636c2.125 0 4.078-0.737 5.618-1.968l3.675 3.675c0.391 0.391 1.024 0.391 1.414 0s0.391-1.024 0-1.414z"></path></svg></div><div class="aa-DetachedSearchButtonPlaceholder"></div><div class="aa-DetachedSearchButtonQuery"></div></button></div></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://christianjmills.com/blog.html" data-original-href="https://christianjmills.com/blog.html"> 
+<span class="menu-text">Blog</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://christianjmills.com/series/tutorials/" data-original-href="https://christianjmills.com/series/tutorials/index.html"> 
+<span class="menu-text">Tutorials</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://christianjmills.com/series/notes/" data-original-href="https://christianjmills.com/series/notes/index.html"> 
+<span class="menu-text">Notes</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://christianjmills.com/about.html" data-original-href="https://christianjmills.com/about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="mailto:christian@christianjmills.com" data-original-href="mailto:christian@christianjmills.com"> <i class="bi bi-envelope-fill" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/cj-mills" data-original-href="https://github.com/cj-mills"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://twitter.com/cdotjdotmills" data-original-href="https://twitter.com/cdotjdotmills"> <i class="bi bi-twitter-x" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/christianjmills" data-original-href="https://www.linkedin.com/in/christianjmills"> <i class="bi bi-linkedin" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://christianjmills.com/blog.xml" data-original-href="https://christianjmills.com/blog.xml"> <i class="bi bi-rss" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/" class="quarto-color-scheme-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar" style="min-height: calc(-122px + 100vh);">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar" style="top: 62px; max-height: calc(-62px + 100vh);">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#introduction">Introduction</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#overview-of-quantization" id="toc-overview-of-quantization" class="nav-link" data-scroll-target="#overview-of-quantization" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#overview-of-quantization">Overview of Quantization</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#dynamic-quantization-kernels" id="toc-dynamic-quantization-kernels" class="nav-link" data-scroll-target="#dynamic-quantization-kernels" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#dynamic-quantization-kernels">Dynamic Quantization Kernels</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-only-quantization-kernels" id="toc-weight-only-quantization-kernels" class="nav-link" data-scroll-target="#weight-only-quantization-kernels" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-only-quantization-kernels">Weight-only Quantization Kernels</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#int4-weight-only-quantization-kernels" id="toc-int4-weight-only-quantization-kernels" class="nav-link" data-scroll-target="#int4-weight-only-quantization-kernels" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#int4-weight-only-quantization-kernels">INT4 Weight-only Quantization Kernels</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#strengths-and-limitations-of-triton" id="toc-strengths-and-limitations-of-triton" class="nav-link" data-scroll-target="#strengths-and-limitations-of-triton" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#strengths-and-limitations-of-triton">Strengths and Limitations of Triton</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#qa-session" id="toc-qa-session" class="nav-link" data-scroll-target="#qa-session" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#qa-session">Q&amp;A Session</a>
+  <ul class="">
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#motivation-and-comparison-with-other-libraries" id="toc-motivation-and-comparison-with-other-libraries" class="nav-link" data-scroll-target="#motivation-and-comparison-with-other-libraries" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#motivation-and-comparison-with-other-libraries">Motivation and Comparison with Other Libraries</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#hardware-support-and-integration" id="toc-hardware-support-and-integration" class="nav-link" data-scroll-target="#hardware-support-and-integration" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#hardware-support-and-integration">Hardware Support and Integration</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#triton-usage-and-development" id="toc-triton-usage-and-development" class="nav-link" data-scroll-target="#triton-usage-and-development" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#triton-usage-and-development">Triton Usage and Development</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#technical-deep-dive-into-quantization" id="toc-technical-deep-dive-into-quantization" class="nav-link active" data-scroll-target="#technical-deep-dive-into-quantization" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#technical-deep-dive-into-quantization">Technical Deep Dive into Quantization</a></li>
+  <li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#future-directions-and-insights" id="toc-future-directions-and-insights" class="nav-link" data-scroll-target="#future-directions-and-insights" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#future-directions-and-insights">Future Directions and Insights</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">GPU MODE Lecture 7: Advanced Quantization</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category"><a href="https://christianjmills.com/blog.html#category=notes">notes</a></div>
+    <div class="quarto-category"><a href="https://christianjmills.com/blog.html#category=cuda">cuda</a></div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Lecture #7 discusses GPU quantization techniques in PyTorch, focusing on performance optimizations using Triton and CUDA kernels for dynamic and weight-only quantization, including challenges and future directions.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Christian Mills </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 10, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>This post is part of the following series:
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><a href="https://christianjmills.com/series/notes/cuda-mode-notes.html" data-original-href="https://christianjmills.com/series/notes/cuda-mode-notes.html"><strong>GPU MODE Lecture Notes</strong></a>: My notes from the <strong>GPU MODE</strong> reading group lectures run by <strong>Andreas Kopf</strong> and <strong>Mark Saroufim</strong>.</li>
+</ul>
+</div>
+</div>
+<ul>
+<li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#introduction" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#introduction">Introduction</a></li>
+<li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#overview-of-quantization" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#overview-of-quantization">Overview of Quantization</a></li>
+<li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#dynamic-quantization-kernels" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#dynamic-quantization-kernels">Dynamic Quantization Kernels</a></li>
+<li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-only-quantization-kernels" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-only-quantization-kernels">Weight-only Quantization Kernels</a></li>
+<li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#int4-weight-only-quantization-kernels" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#int4-weight-only-quantization-kernels">INT4 Weight-only Quantization Kernels</a></li>
+<li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#strengths-and-limitations-of-triton" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#strengths-and-limitations-of-triton">Strengths and Limitations of Triton</a></li>
+<li><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#qa-session" data-original-href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#qa-session">Q&amp;A Session</a></li>
+</ul>
+<div class="callout callout-style-default callout-tip callout-titled" title="Resource Links:">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Resource Links:
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><strong>YouTube Recording:</strong> <a href="https://www.youtube.com/watch?v=1u9xUK3G4VM" data-original-href="https://www.youtube.com/watch?v=1u9xUK3G4VM">Lecture 7 Advanced Quantization</a></li>
+<li><strong>Slides:</strong> <a href="https://www.dropbox.com/scl/fi/hzfx1l267m8gwyhcjvfk4/Quantization-Cuda-vs-Triton.pdf?rlkey=s4j64ivi2kpp2l0uq8xjdwbab&amp;e=1&amp;dl=0" data-original-href="https://www.dropbox.com/scl/fi/hzfx1l267m8gwyhcjvfk4/Quantization-Cuda-vs-Triton.pdf?rlkey=s4j64ivi2kpp2l0uq8xjdwbab&amp;e=1&amp;dl=0">Quantization Cuda vs Triton</a></li>
+</ul>
+</div>
+</div>
+<section id="introduction" class="level3">
+<h3 class="anchored" data-anchor-id="introduction">Introduction<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#introduction" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h3>
+<ul>
+<li><strong>Speaker:</strong> Charles Hernandez, PyTorch Core Team (AO Team - Quantization &amp; Pruning)</li>
+<li><strong>Focus:</strong> GPU Quantization - Intersection of CUDA and Triton based on Charles’ experience over the past year.</li>
+<li><strong>Background:</strong>
+<ul>
+<li><a href="https://github.com/pytorch/ao" data-original-href="https://github.com/pytorch/ao">PyTorch AO</a> team focuses on making models work “worse but faster” by trading off accuracy for performance.</li>
+<li>Historically, quantization was primarily for CPUs.</li>
+<li>Recent push for GPU model productionization led to a shift towards GPU quantization.</li>
+<li>Charles spearheaded quantization for projects like Segment Anything Fast, GPT Fast, SDXL Fast.</li>
+<li>Tools used are available in Torch AO.</li>
+<li><strong>GPU Quantization:</strong> Focus of Charles’ work over the past year.
+<ul>
+<li>Tools available in Torch AO repository.</li>
+<li>Types of quantization: Dynamic, Weight-only INT8, INT4 Weight-only.</li>
+<li>Key challenge: Lack of GPU quantized kernels prior to this work.</li>
+</ul></li>
+</ul></li>
+</ul>
+</section>
+<section id="overview-of-quantization" class="level3">
+<h3 class="anchored" data-anchor-id="overview-of-quantization">Overview of Quantization<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#overview-of-quantization" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h3>
+<ul>
+<li><strong>Goal:</strong> Achieve faster inference by reducing the precision of weights and/or activations.</li>
+<li><strong>Types:</strong>
+<ul>
+<li><p><strong>Dynamic Quantization:</strong></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/dynamic-quantization-flow.png" class="img-fluid figure-img"></p>
+<figcaption>Slide 3: Dynamic Quantization Flow</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Weights:</strong> Quantized to integers.</li>
+<li><strong>Activations:</strong> Quantized to integers.</li>
+<li><strong>Multiplication:</strong> Integer multiplication (faster than float multiplication).</li>
+<li><strong>Accumulation:</strong> Results accumulated, rescaled, and output as float.</li>
+<li><strong>Benefits:</strong> Effective for compute-bound models (e.g., Segment Anything).</li>
+<li><strong>Example:</strong> Multiplying two INT8 tensors is ~4x faster than multiplying two BF16 tensors.</li>
+</ul></li>
+<li><p><strong>Weight-only Quantization:</strong></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/weight-only-quantization-flow.png" class="img-fluid figure-img"></p>
+<figcaption>Slide 3: Weight Only Quantization</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Weights:</strong> Quantized to integers.</li>
+<li><strong>Activations:</strong> Remain in original precision (float).</li>
+<li><strong>Multiplication:</strong> Either directly multiply integer weights with float activations (mixed-dtype) or dequantize weights before multiplication.</li>
+<li><strong>Benefits:</strong>
+<ul>
+<li>Very fast weight loading.</li>
+<li>Effective for memory-bound models (e.g., LLaMA).</li>
+<li>More accurate than dynamic quantization (activations not quantized).</li>
+</ul></li>
+<li><strong>Why not quantize activations in weight-only quantization?</strong>
+<ul>
+<li>Memory-bound scenarios prioritize fast weight loading.</li>
+<li>Quantizing activations adds overhead (compute and memory) that outweighs benefits in memory-bound cases.</li>
+<li>Dynamic quantization tends to slow down memory-bound models like LLaMA compared to weight-only quantization.</li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li><strong>Terminology</strong>: Int4 quantization is ambiguous and should specify weight and activation dtypes (e.g., W4A16, W4BF16 with accumulation in FP32).</li>
+<li><strong>Quantization Considerations:</strong>
+<ul>
+<li><strong>Model Quantizability:</strong> Not all models are equally quantizable.
+<ul>
+<li><strong>Categorization models:</strong> Generally easier to quantize.</li>
+<li><strong>Regression models:</strong> More challenging to quantize.</li>
+<li><strong>GPTQ (Generative Pretrained Transformer Quantization)</strong>: Implemented for Int4 in GPT Fast, allows for model-agnostic quantization.</li>
+</ul></li>
+<li><strong>Quantization-Aware Training (QAT):</strong> Technique to improve quantizability by training the model with simulated quantization.
+<ul>
+<li>Gradients are backpropagated through the simulated quantization operator.</li>
+</ul></li>
+<li><strong>Granularity of Quantization:</strong>
+<ul>
+<li><strong>Per-tensor:</strong> Single scale for the entire tensor.</li>
+<li><strong>Per-channel:</strong> Different scales for each output channel.</li>
+<li><strong>Per-token, per-vector, per-block:</strong> Other possible granularities.</li>
+<li>Finer granularities provide better accuracy but require more memory (more scales).</li>
+</ul></li>
+<li><strong>Choice of Precision:</strong> 8-bit, 4-bit, even 1-bit quantization are possible.
+<ul>
+<li><strong>Bit Width</strong>: Lower bit widths (e.g., 1-bit) are possible but often lead to significant accuracy degradation, suitable for simpler tasks.</li>
+</ul></li>
+<li><strong>Outliers and Distribution:</strong> Quantization performance is affected by the distribution of weights and activations. Outliers can negatively impact accuracy.</li>
+</ul></li>
+</ul>
+</section>
+<section id="dynamic-quantization-kernels" class="level3">
+<h3 class="anchored" data-anchor-id="dynamic-quantization-kernels">Dynamic Quantization Kernels<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#dynamic-quantization-kernels" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h3>
+<ul>
+<li><strong>Initial Approach:</strong> Leverage <code>torch.compile()</code> to generate Triton kernels from Python code.</li>
+<li><strong>Mathematical Formulation</strong>:
+<ul>
+<li>Basic linear operation: <code>Y = X.W</code></li>
+<li>Quantized operation (factor out scales): <code>Y = Sx * Sw * (Xint.Wint)</code> where <code>Xint</code> and <code>Wint</code> are quantized versions of <code>x</code> and <code>w</code>.</li>
+<li><strong>Triton Tutorial:</strong> <a href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html" data-original-href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html">Matrix Multiplication</a></li>
+</ul></li>
+<li><strong>Per Token &amp; Per Channel Quantization</strong>: GPU allows efficient per token and per channel quantization due to parallel processing.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/dynamic-quantization-slide-7.png" class="img-fluid figure-img"></p>
+<figcaption>Slide 7</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Challenges:</strong>
+<ul>
+<li><strong>Memory Increase:</strong> Materializing intermediate results in INT32 during INT8 multiplication leads to higher memory usage than BF16.</li>
+</ul></li>
+<li><strong>Solution:</strong>
+<ul>
+<li>Fuse the rescaling operation (<code>sw</code>) into the Triton kernel to avoid materializing the INT32 intermediate result.</li>
+<li><strong>Implementation:</strong>
+<ul>
+<li>Modify the Triton kernel to include the rescaling multiplication.</li>
+<li>Use <code>config.force_fuse_int_mm_with_mul = True</code> in Torch Compile to force fusion.</li>
+<li><strong><code>torch/_inductor/kernel/mm.py</code></strong> <a href="https://github.com/pytorch/pytorch/blob/26e5572dd24acd69b08eb94577f8796a480c9fe0/torch/_inductor/kernel/mm.py#L757" data-original-href="https://github.com/pytorch/pytorch/blob/26e5572dd24acd69b08eb94577f8796a480c9fe0/torch/_inductor/kernel/mm.py#L757"><code>tuned_fused_int_mm_mul</code></a></li>
+</ul></li>
+</ul></li>
+<li><strong>Results:</strong>
+<ul>
+<li><strong>Performance:</strong> ~14% improvement over baseline.</li>
+<li><strong>Memory:</strong> Slightly improved peak memory.</li>
+</ul></li>
+<li><strong>Key Takeaway:</strong> Triton’s flexibility in fusing operations enables significant performance gains without extensive kernel development.</li>
+</ul>
+</section>
+<section id="weight-only-quantization-kernels" class="level3">
+<h3 class="anchored" data-anchor-id="weight-only-quantization-kernels">Weight-only Quantization Kernels<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-only-quantization-kernels" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h3>
+<ul>
+<li><strong>Initial Approach (Naive):</strong>
+<ul>
+<li>Use the same matrix multiplication kernel as in dynamic quantization but change the activation’s dtype to BF16.</li>
+<li>Load INT8 weights, convert to BF16, multiply with BF16 activations, accumulate in FP32, and rescale.</li>
+</ul></li>
+<li><strong>Results:</strong> Extremely slow, even slower than non-quantized matmul.</li>
+<li><strong>Analysis:</strong>
+<ul>
+<li>Increased workload (loading integers, conversions, rescaling).</li>
+<li>Potential limitations with block size in Triton’s tensor core kernels.</li>
+</ul></li>
+<li><strong>Solution (Torch Compile Magic):</strong>
+<ul>
+<li>Reformulate the matmul operation using element-wise multiplication and summation.</li>
+<li><code>torch.sum(x.unsqueeze(-1) * w, dim=-2)</code></li>
+</ul></li>
+<li><strong>Results:</strong>
+<ul>
+<li><strong>Performance:</strong> Blazing fast, significantly faster than both weight-only and non-quantized matmul.</li>
+</ul></li>
+<li><strong>Analysis:</strong>
+<ul>
+<li>Torch Compile generates a highly efficient Triton kernel that avoids tensor cores.</li>
+<li>Each column of the weight matrix <code>w</code> is processed by a separate thread, enabling high parallelism.</li>
+<li>Accumulates in FP32 (potential for further optimization).</li>
+</ul></li>
+<li><strong>Limitations:</strong>
+<ul>
+<li>Only works for batch size 1 (memory-bound scenarios).</li>
+<li>Batch size &gt; 1 requires indexing over both activation and weight matrices, making it compute-bound and challenging.</li>
+</ul></li>
+<li><strong>Key Takeaway:</strong> Torch Compile can sometimes produce unexpectedly efficient kernels for specific formulations, highlighting its potential for optimization.</li>
+</ul>
+</section>
+<section id="int4-weight-only-quantization-kernels" class="level3">
+<h3 class="anchored" data-anchor-id="int4-weight-only-quantization-kernels">INT4 Weight-only Quantization Kernels<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#int4-weight-only-quantization-kernels" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h3>
+<ul>
+<li><strong>Challenges:</strong>
+<ul>
+<li>No native INT4 dtype in PyTorch or Triton Lang.</li>
+<li>Manual packing and unpacking of INT4 values into INT8 is required, introducing overhead.</li>
+<li>Ideal scenario: Directly multiply INT4 values with BF16 activations without explicit conversions.</li>
+</ul></li>
+<li><strong>Triton-based Approach:</strong>
+<ul>
+<li><strong>Packing:</strong> Pack two INT4 values into one INT8 using various packing schemes.</li>
+<li><strong>Kernel Implementation:</strong> Implement a custom Triton kernel to handle packed INT4 multiplication.</li>
+</ul></li>
+<li><strong>Results:</strong> Very slow, comparable to the naive weight-only approach.</li>
+<li><strong>CUDA Kernel (FastINT8):</strong>
+<ul>
+<li>Jeff Johnson (PyTorch GPU backend developer) developed a highly optimized CUDA kernel for INT4 weight-only quantization.</li>
+</ul></li>
+<li><strong>Results:</strong>
+<ul>
+<li><strong>Performance:</strong> Extremely fast, surpassing all previous approaches.</li>
+<li>Achieves state-of-the-art performance for INT4 quantization.</li>
+</ul></li>
+<li><strong>Key Takeaway:</strong> For complex operations and custom dtypes, highly optimized CUDA kernels can significantly outperform Triton-based solutions. Triton’s limitations become apparent in these scenarios.</li>
+</ul>
+</section>
+<section id="strengths-and-limitations-of-triton" class="level3">
+<h3 class="anchored" data-anchor-id="strengths-and-limitations-of-triton">Strengths and Limitations of Triton<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#strengths-and-limitations-of-triton" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h3>
+<ul>
+<li><strong>Strengths:</strong>
+<ul>
+<li><strong>Accessibility:</strong> Enables rapid development of efficient GPU kernels without deep CUDA expertise.</li>
+<li><strong>Fusion:</strong> Excellent at fusing multiple operations into single kernels, reducing overhead.</li>
+<li><strong>INT8 Support:</strong> Handles INT8 quantization very well.</li>
+<li><strong>Torch Compile Integration:</strong> Works seamlessly with Torch Compile for automatic kernel generation.</li>
+<li><strong>Flexibility:</strong> Easy to add custom operations or modify existing kernels.</li>
+</ul></li>
+<li><strong>Limitations:</strong>
+<ul>
+<li><strong>Custom Dtypes:</strong> Limited support for custom dtypes like INT4.</li>
+<li><strong>Complex Operations:</strong> Can struggle with complex operations that require fine-grained control over data layout and computation.</li>
+<li><strong>Batch Size &gt; 1 for Weight-only INT4:</strong> No efficient solution yet.</li>
+<li><strong>L2 Cache Issues:</strong> Potential problems with L2 cache utilization for batch size &gt; 1 in weight-only quantization.</li>
+<li><strong>Config Consistency:</strong> Heuristics for selecting optimal kernel configurations can be inconsistent.</li>
+</ul></li>
+</ul>
+</section>
+<section id="qa-session" class="level3">
+<h3 class="anchored" data-anchor-id="qa-session">Q&amp;A Session<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#qa-session" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h3>
+<section id="motivation-and-comparison-with-other-libraries" class="level4">
+<h4 class="anchored" data-anchor-id="motivation-and-comparison-with-other-libraries">Motivation and Comparison with Other Libraries<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#motivation-and-comparison-with-other-libraries" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h4>
+<section id="reasons-for-developing-native-pytorch-quantization" class="level5">
+<h5 class="anchored" data-anchor-id="reasons-for-developing-native-pytorch-quantization">Reasons for Developing Native PyTorch Quantization<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#reasons-for-developing-native-pytorch-quantization" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Goal:</strong> Address the <strong>fracturization of technologies</strong> in the open-source community and make advanced techniques like quantization more accessible, especially for those without the time to keep up with rapidly evolving optimizations.</li>
+<li><strong>Advantages:</strong>
+<ul>
+<li><strong>Native PyTorch integration:</strong> Similar to how operations like LayerNorm and BatchNorm became accessible within PyTorch, quantization aims to provide a user-friendly experience.</li>
+<li><strong>Access to the Torch Compile team:</strong> Allows for faster development and the addition of hard-coded optimizations that might not be easily implemented elsewhere.</li>
+<li><strong>Collaboration with experts like Jeff Johnson:</strong> Leverages expertise in int4 kernels, resulting in potentially the <strong>fastest int4 performance</strong> currently available.</li>
+</ul></li>
+</ul>
+</section>
+<section id="comparison-with-bitsandbytes" class="level5">
+<h5 class="anchored" data-anchor-id="comparison-with-bitsandbytes">Comparison with BitsandBytes<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#comparison-with-bitsandbytes" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Have you tested <strong>Tim Dettmers’ BitsandBytes library</strong> for quantization?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li>BitsandBytes focuses more on <strong>quantization-aware training (QAT)</strong>.</li>
+<li>BitsandBytes kernels are <strong>not the fastest</strong>, employing a hybrid approach with FP16 for challenging layers.</li>
+<li>The project aims for maximum speed, suggesting QAT or GPTQ as solutions for quantization challenges.</li>
+<li>BitsandBytes appears to use <strong>table-based lookups for 4-bit quantization</strong>, which is likely not currently possible with Triton without an FP4 data type or tweaks to the Triton language.</li>
+</ul></li>
+</ul>
+</section>
+<section id="comparison-with-other-quantization-libraries" class="level5">
+<h5 class="anchored" data-anchor-id="comparison-with-other-quantization-libraries">Comparison with Other Quantization Libraries<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#comparison-with-other-quantization-libraries" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong><a href="https://huggingface.co/blog/quanto-introduction" data-original-href="https://huggingface.co/blog/quanto-introduction">Quanto</a>:</strong> Hugging Face seems to be moving towards Quanto, developed by one of their employees.</li>
+<li><strong>Overall:</strong> There are many strong quantization technologies (BitsandBytes, Quanto, the project discussed) and limited engineering resources.</li>
+<li><strong>Prediction:</strong> One technology will likely dominate the field within a couple of years.</li>
+</ul>
+</section>
+</section>
+<section id="hardware-support-and-integration" class="level4">
+<h4 class="anchored" data-anchor-id="hardware-support-and-integration">Hardware Support and Integration<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#hardware-support-and-integration" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h4>
+<section id="nvidia-kernels-and-data-types" class="level5">
+<h5 class="anchored" data-anchor-id="nvidia-kernels-and-data-types">Nvidia Kernels and Data Types<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#nvidia-kernels-and-data-types" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Have you looked at <strong>Nvidia’s custom FP8 kernels</strong>, particularly their performance in high-throughput scenarios with larger batch sizes?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li>Nvidia appears to have <strong>removed int4 kernels from the H100</strong> and moved to <strong>FP4</strong>.</li>
+<li>Nvidia has a <strong>mixed-precision data type (MX)</strong>, but direct comparisons haven’t been conducted yet.</li>
+<li>The current focus is on <strong>automating layer-specific quantization choices</strong>, rather than peak performance.</li>
+<li>They are tracking various quantization technologies like QUIP and AMP, which focus on rounding rather than kernels, and prioritizing support based on need.</li>
+</ul></li>
+</ul>
+</section>
+<section id="amd-support" class="level5">
+<h5 class="anchored" data-anchor-id="amd-support">AMD Support<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#amd-support" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> What is the <strong>appetite for AMD hardware support</strong> through Triton?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li>While the speaker is not on the Triton team, they acknowledge the potential of AMD support.</li>
+<li><strong>Strong community appetite:</strong> The GPT-fast blog post included AMD numbers, highlighting the potential for cross-platform support with minimal code changes.</li>
+<li><strong>Active development:</strong> The PyTorch repo shows many eager kernels being HIP-ified (adapted for AMD).</li>
+<li><strong>Bug reports are crucial</strong> for improving AMD support and encouraging development.</li>
+</ul></li>
+</ul>
+</section>
+<section id="mac-support" class="level5">
+<h5 class="anchored" data-anchor-id="mac-support">Mac Support<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#mac-support" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Triton team mentioned plans for <strong>integration with newer Mac versions</strong> a year ago. Any updates?</li>
+<li><strong>Answer:</strong> It’s difficult to comment on hardware vendor plans, as they are typically kept secret until release.</li>
+</ul>
+</section>
+</section>
+<section id="triton-usage-and-development" class="level4">
+<h4 class="anchored" data-anchor-id="triton-usage-and-development">Triton Usage and Development<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#triton-usage-and-development" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h4>
+<section id="triton-installation" class="level5">
+<h5 class="anchored" data-anchor-id="triton-installation">Triton Installation<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#triton-installation" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Do you install Triton directly from GitHub or use the version included with the latest PyTorch build?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li>Triton’s rapid development can lead to inconsistencies between versions, affecting reproducibility.</li>
+<li>Experiences of significant performance differences between Triton versions, with results sometimes degrading after upgrades or downgrades.</li>
+<li>Currently, using the <strong>PyTorch-bundled version</strong> is recommended for <strong>reproducibility</strong>, although testing with the latest Triton can reveal potential speedups.</li>
+</ul></li>
+</ul>
+</section>
+<section id="tritons-openness-and-future" class="level5">
+<h5 class="anchored" data-anchor-id="tritons-openness-and-future">Triton’s Openness and Future<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#tritons-openness-and-future" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Is Triton an OpenAI product or a collaborative effort? Are there agreements to ensure its availability for the broader community, even if OpenAI changes its licensing or access in the future?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li><strong>Strong industry support:</strong> The recent Triton conference showcased talks primarily from hardware vendors, indicating its wide adoption.</li>
+<li><strong>Close ties with PyTorch:</strong> Strong relationship between the Torch Compile and Triton teams, with Triton developers contributing to the PyTorch 2 paper.</li>
+<li><strong>Triton’s future within PyTorch seems secure</strong>, becoming a core dependency for kernel generation.</li>
+</ul></li>
+</ul>
+</section>
+</section>
+<section id="technical-deep-dive-into-quantization" class="level4">
+<h4 class="anchored" data-anchor-id="technical-deep-dive-into-quantization">Technical Deep Dive into Quantization<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#technical-deep-dive-into-quantization" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h4>
+<section id="accumulation-data-type-selection" class="level5">
+<h5 class="anchored" data-anchor-id="accumulation-data-type-selection">Accumulation Data Type Selection<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#accumulation-data-type-selection" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> When performing matrix multiplication with int8 inputs, how is the <strong>accumulation data type</strong> (e.g., BF16, FP32, FP64) chosen?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li><strong>Hardware limitations:</strong> In many cases, hardware dictates the accumulation type (e.g., int8 multiplication often accumulates to int32).</li>
+<li><strong>Overflow concerns:</strong> Smaller accumulation types can lead to overflow issues, as seen with int8 accumulation in sparse kernels.</li>
+<li><strong>Practical considerations:</strong> The goal is to use the smallest data type that avoids overflow, often BF16 or FP32.</li>
+<li><strong>FP32’s versatility:</strong> It can handle accumulation from various data types, including int8, making it a robust choice.</li>
+<li><strong>FP64 is rarely needed</strong> unless dealing with massive tensors prone to overflow during accumulation.</li>
+</ul></li>
+</ul>
+</section>
+<section id="one-bit-quantization" class="level5">
+<h5 class="anchored" data-anchor-id="one-bit-quantization">One-Bit Quantization<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#one-bit-quantization" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Have you explored <strong>extreme cases like one-bit quantization</strong>? Is it still useful, or does it lead to significant performance degradation?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li><strong>QUIP paper demonstrates promising results:</strong> It employs pre-processing to orthogonalize weights and activations, mitigating quantization error propagation.</li>
+<li><strong>Specialized kernels:</strong> QUIP uses kernels for orthogonalization, multiplication, and de-orthogonalization, achieving reasonable results with int2 and potentially int1.</li>
+<li><strong>Usefulness depends on the task:</strong> LLMs might be challenging, but simpler tasks like MNIST could be feasible.</li>
+<li><strong>Power-of-two quantizations</strong> are also efficient due to bit-shifting operations.</li>
+<li><strong>Hardware support and accuracy</strong> are key factors in determining the viability of extreme quantization techniques.</li>
+</ul></li>
+</ul>
+</section>
+<section id="weight-distribution-analysis" class="level5">
+<h5 class="anchored" data-anchor-id="weight-distribution-analysis">Weight Distribution Analysis<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#weight-distribution-analysis" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Do you use tools to <strong>analyze weight distributions</strong> before quantization (e.g., visualizing distributions, checking for outliers)?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li><strong>Depends on the technique:</strong> Basic int8 quantization typically doesn’t require in-depth analysis.</li>
+<li><strong>GPTQ for int4 requires data and pre-processing:</strong> It involves calculating the Hessian of activations and iteratively quantizing weight matrix columns while maintaining the Hessian multiplication.</li>
+<li><strong>Int8 weight-only quantization is fast and doesn’t need data analysis</strong>.</li>
+<li><strong>QLoRA and LLM.int8 papers provide valuable insights:</strong> QLoRA’s appendix shows that LLM weights are often zero-mean and normally distributed.</li>
+<li><strong>QLoRA’s NF4 data type</strong> aims to maintain a normal distribution of weights.</li>
+<li><strong>Plotting weight histograms</strong> is helpful to ensure a full range utilization of the lower d-type and avoid sparse buckets.</li>
+<li><strong>Scaling and shifting the mean</strong> are common techniques to optimize the use of the lower d-type’s range.</li>
+</ul></li>
+</ul>
+</section>
+<section id="quantization-for-speculative-decoding" class="level5">
+<h5 class="anchored" data-anchor-id="quantization-for-speculative-decoding">Quantization for Speculative Decoding<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#quantization-for-speculative-decoding" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Is quantization the best option for <strong>speculative decoding</strong>, compared to using a separate network? Would the weight distribution be similar?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li><strong>Experiments in the GPT-fast repo</strong> demonstrate quantization for speculative decoding with a 70B Llama 2 model, quantized using GPTQ on WikiText.</li>
+<li><strong>Trade-off between speed and accuracy:</strong> Results show a clear trade-off, with different quantization levels offering varying performance.</li>
+<li><strong>Quantization is currently the easiest and most mature option</strong>, but sparsity and other techniques like knowledge distillation are also being explored.</li>
+</ul></li>
+</ul>
+</section>
+</section>
+<section id="future-directions-and-insights" class="level4">
+<h4 class="anchored" data-anchor-id="future-directions-and-insights">Future Directions and Insights<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#future-directions-and-insights" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h4>
+<section id="scaling-vs.-optimization" class="level5">
+<h5 class="anchored" data-anchor-id="scaling-vs.-optimization">Scaling vs.&nbsp;Optimization<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#scaling-vs.-optimization" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Observation:</strong> Current trends focus on scaling up models, but quantization suggests we may not need all weights in their non-zero form.</li>
+<li><strong>Hardware limitations:</strong> Current hardware favors dense matrix multiplications, potentially hindering the adoption of sparse techniques.</li>
+<li><strong>Sparse techniques are available in Torch.io for GPU</strong>, but further development is needed.</li>
+</ul>
+</section>
+<section id="layer-specific-optimization" class="level5">
+<h5 class="anchored" data-anchor-id="layer-specific-optimization">Layer-Specific Optimization<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#layer-specific-optimization" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Complexity of optimization:</strong> Finding the optimal combination of techniques for each layer is a laborious process, involving trade-offs between speed and accuracy.</li>
+<li><strong>No single solution:</strong> There’s no “one-size-fits-all” approach; optimizing requires careful analysis and experimentation.</li>
+</ul>
+</section>
+<section id="accuracy-metrics" class="level5">
+<h5 class="anchored" data-anchor-id="accuracy-metrics">Accuracy Metrics<a class="anchorjs-link " aria-label="Anchor" data-anchorjs-icon="" href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#accuracy-metrics" style="font: 1em / 1 anchorjs-icons; margin-left: 0.1875em; padding-right: 0.1875em; padding-left: 0.1875em;"></a></h5>
+<ul>
+<li><strong>Question:</strong> Is <strong>accuracy</strong> the best metric for evaluating quantization? Would <strong>perplexity</strong> be more realistic?</li>
+<li><strong>Answer:</strong>
+<ul>
+<li><strong>Perplexity’s limitations:</strong> While useful, it can be difficult to interpret in terms of real-world impact, lacking a clear connection to human perception of quality.</li>
+<li><strong>Accuracy provides more granularity and robustness</strong>, allowing for fine-grained analysis of performance changes.</li>
+<li><strong>Human evaluation (vibe checks)</strong> remains the most indicative measure of quality in the short term, especially for detecting significant degradations like a model switching languages.</li>
+<li><strong>Evaluation datasets are useful for CI checks</strong> but might not fully capture real-world performance or user preferences.</li>
+</ul></li>
+</ul>
+<hr>
+<div class="callout callout-style-default callout-tip callout-titled" title="About Me:">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>About Me:
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>I’m Christian Mills, an Applied AI Consultant and Educator.</p>
+<p>Whether I’m writing an in-depth tutorial or sharing detailed notes, my goal is the same: to bring clarity to complex topics and find practical, valuable insights.</p>
+<p>If you need a strategic partner who brings this level of depth and systematic thinking to your AI project, I’m here to help. Let’s talk about de-risking your roadmap and building a real-world solution.</p>
+<p>Start the conversation with my <a href="https://docs.google.com/forms/d/e/1FAIpQLScKDKPJF9Be47LA3nrEDXTVpzH2UMLz8SzHMHM9hWT5qlvjkw/viewform?usp=sf_link" data-original-href="https://docs.google.com/forms/d/e/1FAIpQLScKDKPJF9Be47LA3nrEDXTVpzH2UMLz8SzHMHM9hWT5qlvjkw/viewform?usp=sf_link">Quick AI Project Assessment</a> or learn more <a href="https://christianjmills.com/about.html" data-original-href="https://christianjmills.com/about.html">about my approach</a>.</p>
+</div>
+</div>
+
+
+</section>
+</section>
+</section>
+
+</main> <!-- /main -->
+<!-- Cloudflare Web Analytics --><script defer="" src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/beacon.min.js" data-cf-beacon="{&quot;token&quot;: &quot;56b8d2f624604c4891327b3c0d9f6703&quot;}"></script><!-- End Cloudflare Web Analytics -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/christianjmills\.com");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<div class="utterances" style="height: 269px;">
+    <iframe class="utterances-frame" title="Comments" scrolling="no" src="./GPU MODE Lecture 7_ Advanced Quantization – Christian Mills_files/utterances.html" loading="lazy"></iframe>
+  </div>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link" href="https://creativecommons.org/licenses/by-nc-sa/4.0/" data-original-href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+<p>Content licensed under CC BY-NC-SA 4.0</p>
+</a>
+  </li>  
+</ul>
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link" href="https://christianjmills.com/about.html" data-original-href="https://christianjmills.com/about.html">
+<p>© 2025 Christian J. Mills</p>
+</a>
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+    <a class="nav-link" href="https://opensource.org/licenses/MIT" data-original-href="https://opensource.org/licenses/MIT">
+<p>Code samples licensed under the MIT License</p>
+</a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+<div id="1p-menu-live-region" role="status" aria-live="polite" aria-atomic="true" aria-relevant="all" style="clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; overflow: hidden; position: fixed; top: 0px; left: 0px; white-space: nowrap; width: 1px; overflow-wrap: normal;">1Password 菜单可用。按向下箭头进行选择。</div></body><div id="immersive-translate-popup" style="all: initial"><template shadowrootmode="open"><div id="mount" style="display: block;"><div class="imt-fb-container right imt-notranslate  " data-theme="light" style="z-index: 2147483637; pointer-events: none; right: 0px; top: 335px; display: flex;"><div hidden="" class="imt-no-events " id="manga-button" style="position: relative;"><div class=" " style="position: relative; pointer-events: all; display: inline-block;"><div><div class="imt-manga-button btn-animate" style="opacity: 0.7; transform: translateX(2px);"><div style="position: relative;"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" style="vertical-align: middle;"><path d="M14.8853 4.92364C14.8853 4.92364 16.3905 10.4362 22.6668 4C22.6668 4 20.3381 10.8907 25.3364 10.0843C25.3364 10.0843 22.0563 15.6994 29 18.0599C29 18.0599 22.9934 19.306 21.1617 28C21.1617 28 17.7679 24.54 14.8853 27.3549C14.8853 27.3549 13.3233 23.5724 7.33097 26.27C7.33097 26.27 10.1141 20.6549 4.83179 21.0507C4.83179 21.0507 7.16057 18.8955 3 15.9047C3 15.9047 7.50137 16.1833 6.33697 11.7117C6.33697 11.7117 10.0005 12.3421 8.66576 6.82957C8.65156 6.81491 12.4855 9.80574 14.8853 4.92364Z" fill="#ED6D8F"></path><path d="M20.8599 13.7022C20.885 13.1361 20.9543 12.5713 20.9959 12.0052C21.0337 11.568 20.8107 11.2794 20.3876 11.18C20.0759 11.1013 19.7508 11.0867 19.433 11.137C19.1951 11.1945 18.9542 11.2396 18.7113 11.2721C18.2403 11.3028 17.9973 11.5275 17.9796 11.988C17.977 12.0833 17.9596 12.1777 17.928 12.268C17.3034 13.9102 16.6774 15.5499 16.0503 17.1873C16.0301 17.2401 16.0062 17.2904 15.9671 17.3776C15.7291 16.8975 15.4281 16.4898 15.2745 15.9986C14.8073 14.5152 14.3186 13.033 13.8312 11.5594C13.6826 11.1112 13.3489 10.9344 12.8754 11.0216C12.7889 11.0365 12.7008 11.0398 12.6134 11.0314C12.2241 10.9938 11.8311 11.0404 11.4623 11.1677C11.0946 11.2991 10.9498 11.557 11.0152 11.9254C11.0428 12.0371 11.0643 12.1503 11.0795 12.2643C11.1223 13.1902 11.1777 14.1087 11.2054 15.0321C11.257 16.7992 11.2117 18.5651 11.0858 20.3284C11.0644 20.6354 11.0304 20.9424 11.0228 21.2494C11.0115 21.6092 11.1613 21.7811 11.5266 21.8143C11.9976 21.8573 12.4711 21.8708 12.9421 21.9088C13.0309 21.9201 13.121 21.9003 13.1962 21.8528C13.2714 21.8053 13.3268 21.7334 13.3527 21.6497C13.3996 21.5394 13.4252 21.4216 13.4282 21.3022C13.4295 20.8258 13.4207 20.3493 13.4081 19.8741C13.393 19.3264 13.3917 18.7763 13.3438 18.231C13.2857 17.5839 13.266 16.934 13.2847 16.2847C13.2847 16.2466 13.291 16.2073 13.2985 16.1312C13.3338 16.2024 13.3514 16.2356 13.3665 16.2712C13.9017 17.5228 14.3617 18.8037 14.7443 20.1074C14.7928 20.2421 14.7928 20.3889 14.7443 20.5237C14.6322 20.8196 14.7141 21.037 14.9659 21.1377C15.4445 21.3268 15.9331 21.4926 16.4155 21.6731C16.4865 21.7033 16.566 21.7091 16.6408 21.6895C16.7157 21.6698 16.7815 21.6259 16.8273 21.565C16.9085 21.4643 16.9743 21.3526 17.0225 21.2335C17.0537 21.1374 17.0798 21.0399 17.1006 20.9412C17.3185 20.2425 17.5653 19.5499 17.7517 18.8438C17.9785 17.9723 18.2624 17.1158 18.6018 16.2798C18.6201 16.2439 18.6411 16.2094 18.6647 16.1766C18.6761 16.2319 18.6761 16.254 18.6761 16.2761C18.6345 17.59 18.5955 18.8978 18.5501 20.2056C18.5363 20.5949 18.491 20.9829 18.4809 21.3722C18.4721 21.705 18.6207 21.8708 18.9557 21.9002C19.4355 21.9432 19.9191 21.9592 20.4002 21.9973C20.4888 22.0079 20.5784 21.9875 20.653 21.9399C20.7277 21.8922 20.7827 21.8203 20.8082 21.7369C20.8531 21.6305 20.8766 21.5167 20.8775 21.4017C20.88 20.7668 20.8674 20.132 20.8674 19.4971C20.8662 19.2846 20.8687 19.0722 20.8523 18.8622C20.8158 18.3968 20.7264 17.9314 20.7339 17.4685C20.7515 16.2122 20.8044 14.9572 20.8599 13.7022Z" fill="white"></path></svg></div></div></div></div></div><div style="display: flex; align-items: center; flex-direction: row; gap: 8px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" style="display: block; opacity: 0;"><g clip-path="url(#clip0_38845_9816)"><path d="M7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14Z" fill="#B1B1B1" fill-opacity="0.4"></path><path d="M6.11754 7.00052L4.18254 5.06452C4.06786 4.94725 4.00406 4.78948 4.00498 4.62546C4.00589 4.46144 4.07145 4.3044 4.18744 4.18841C4.30342 4.07243 4.46046 4.00687 4.62448 4.00595C4.7885 4.00503 4.94627 4.06884 5.06354 4.18352L6.99954 6.11852L8.93554 4.18352C8.99315 4.1246 9.06188 4.07771 9.13774 4.04554C9.2136 4.01337 9.29508 3.99656 9.37748 3.9961C9.45988 3.99564 9.54155 4.01153 9.61777 4.04285C9.69398 4.07417 9.76323 4.1203 9.82149 4.17857C9.87976 4.23683 9.92589 4.30608 9.95721 4.38229C9.98853 4.45851 10.0044 4.54018 10.004 4.62258C10.0035 4.70497 9.98669 4.78646 9.95452 4.86232C9.92235 4.93818 9.87545 5.00691 9.81654 5.06452L7.88154 7.00052L9.81654 8.93652C9.93122 9.05379 9.99502 9.21155 9.99411 9.37557C9.99319 9.5396 9.92763 9.69664 9.81164 9.81262C9.69566 9.9286 9.53862 9.99417 9.3746 9.99508C9.21058 9.996 9.05281 9.9322 8.93554 9.81752L6.99954 7.88252L5.06354 9.81752C5.00593 9.87643 4.93721 9.92333 4.86135 9.9555C4.78549 9.98767 4.704 10.0045 4.6216 10.0049C4.5392 10.0054 4.45753 9.9895 4.38131 9.95818C4.3051 9.92686 4.23585 9.88073 4.17759 9.82247C4.11932 9.7642 4.0732 9.69496 4.04188 9.61874C4.01056 9.54253 3.99467 9.46086 3.99513 9.37846C3.99559 9.29606 4.01239 9.21457 4.04456 9.13871C4.07673 9.06285 4.12363 8.99413 4.18254 8.93652L6.11754 7.00052Z" fill="white"></path></g><defs><clippath id="clip0_38845_9816"><rect width="14" height="14" fill="white"></rect></clippath></defs></svg><div style="position: relative;"><div class="imt-fb-btn right btn-animate  " dir="ltr" style="opacity: 0.7;"><div class=" " style="position: relative; pointer-events: all; display: inline-block;"><div><div class="imt-fb-btn-content"><svg class="imt-fb-logo-img imt-fb-logo-img-big-bg" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 14C0 6.26801 6.26801 0 14 0C21.732 0 28 6.26801 28 14C28 21.732 21.732 28 14 28C6.26801 28 0 21.732 0 14Z" fill="#ED6D8F"></path><path d="M7.30921 15.6381C7.53044 15.6381 7.70979 15.8175 7.70979 16.0387V19.0088C7.70979 19.934 8.45993 20.684 9.38526 20.684H11.7557C11.9769 20.684 12.1562 20.8634 12.1562 21.0846V22.152C12.1562 22.3732 11.9769 22.5526 11.7557 22.5526H9.38526C7.42782 22.5526 5.84099 20.966 5.84099 19.0088V16.0387C5.84099 15.8175 6.02034 15.6381 6.24157 15.6381H7.30921ZM18.9876 12.6944C19.1515 12.6944 19.2989 12.7943 19.3597 12.9466L22.9711 22.0036C23.076 22.2667 22.8822 22.5526 22.599 22.5526H21.4672C21.3016 22.5526 21.153 22.4506 21.0934 22.2961L20.2724 20.1673C20.2128 20.0128 20.0643 19.9108 19.8986 19.9108H16.7508C16.5852 19.9108 16.4366 20.0128 16.377 20.1673L15.556 22.2961C15.4964 22.4506 15.3478 22.5526 15.1822 22.5526H14.0504C13.7672 22.5526 13.5734 22.2667 13.6783 22.0036L17.2897 12.9466C17.3505 12.7943 17.4979 12.6944 17.6618 12.6944H18.9876ZM18.5116 15.6017C18.4456 15.4308 18.2038 15.4308 18.1378 15.6017L17.3016 17.7699C17.251 17.9011 17.3478 18.0423 17.4885 18.0423H19.1609C19.3016 18.0423 19.3984 17.9012 19.3478 17.7699L18.5116 15.6017ZM9.69589 5.30028C9.79943 4.8999 10.368 4.89991 10.4715 5.30028L11.1086 7.76368C11.3244 8.59845 11.9396 9.27221 12.7513 9.56299L14.9019 10.3334C15.2559 10.4602 15.2559 10.9608 14.9019 11.0876L12.7513 11.8581C11.9396 12.1489 11.3244 12.8226 11.1086 13.6574L10.4715 16.1208C10.368 16.5212 9.79943 16.5212 9.69589 16.1208L9.05884 13.6574C8.84297 12.8226 8.22786 12.1489 7.41615 11.8581L5.26548 11.0876C4.91151 10.9608 4.91151 10.4602 5.26548 10.3334L7.41615 9.56299C8.22786 9.27221 8.84297 8.59844 9.05884 7.76368L9.69589 5.30028ZM18.0064 6.20485C19.9639 6.20485 21.5507 7.79145 21.5507 9.74861V11.281C21.5507 11.5022 21.3713 11.6816 21.1501 11.6816H20.0825C19.8612 11.6816 19.6819 11.5022 19.6819 11.281V9.74861C19.6819 8.82341 18.9318 8.07338 18.0064 8.07338H14.4343C14.2131 8.07338 14.0337 7.89403 14.0337 7.6728V6.60543C14.0337 6.3842 14.2131 6.20486 14.4343 6.20485H18.0064Z" fill="white"></path></svg></div></div></div></div><div title="关闭悬浮球" class="imt-fb-close-button btn-animate" style="opacity: 0; pointer-events: none; filter: blur(1px); transition: opacity 110ms cubic-bezier(0.4, 0, 1, 1), filter 110ms cubic-bezier(0.4, 0, 1, 1); will-change: opacity, filter;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none"><g clip-path="url(#clip0_38845_9816)"><path d="M7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14Z" fill="#B1B1B1" fill-opacity="0.4"></path><path d="M6.11754 7.00052L4.18254 5.06452C4.06786 4.94725 4.00406 4.78948 4.00498 4.62546C4.00589 4.46144 4.07145 4.3044 4.18744 4.18841C4.30342 4.07243 4.46046 4.00687 4.62448 4.00595C4.7885 4.00503 4.94627 4.06884 5.06354 4.18352L6.99954 6.11852L8.93554 4.18352C8.99315 4.1246 9.06188 4.07771 9.13774 4.04554C9.2136 4.01337 9.29508 3.99656 9.37748 3.9961C9.45988 3.99564 9.54155 4.01153 9.61777 4.04285C9.69398 4.07417 9.76323 4.1203 9.82149 4.17857C9.87976 4.23683 9.92589 4.30608 9.95721 4.38229C9.98853 4.45851 10.0044 4.54018 10.004 4.62258C10.0035 4.70497 9.98669 4.78646 9.95452 4.86232C9.92235 4.93818 9.87545 5.00691 9.81654 5.06452L7.88154 7.00052L9.81654 8.93652C9.93122 9.05379 9.99502 9.21155 9.99411 9.37557C9.99319 9.5396 9.92763 9.69664 9.81164 9.81262C9.69566 9.9286 9.53862 9.99417 9.3746 9.99508C9.21058 9.996 9.05281 9.9322 8.93554 9.81752L6.99954 7.88252L5.06354 9.81752C5.00593 9.87643 4.93721 9.92333 4.86135 9.9555C4.78549 9.98767 4.704 10.0045 4.6216 10.0049C4.5392 10.0054 4.45753 9.9895 4.38131 9.95818C4.3051 9.92686 4.23585 9.88073 4.17759 9.82247C4.11932 9.7642 4.0732 9.69496 4.04188 9.61874C4.01056 9.54253 3.99467 9.46086 3.99513 9.37846C3.99559 9.29606 4.01239 9.21457 4.04456 9.13871C4.07673 9.06285 4.12363 8.99413 4.18254 8.93652L6.11754 7.00052Z" fill="white"></path></g><defs><clippath id="clip0_38845_9816"><rect width="14" height="14" fill="white"></rect></clippath></defs></svg></div></div><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" style="display: none; opacity: 0;"><g clip-path="url(#clip0_38845_9816)"><path d="M7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14Z" fill="#B1B1B1" fill-opacity="0.4"></path><path d="M6.11754 7.00052L4.18254 5.06452C4.06786 4.94725 4.00406 4.78948 4.00498 4.62546C4.00589 4.46144 4.07145 4.3044 4.18744 4.18841C4.30342 4.07243 4.46046 4.00687 4.62448 4.00595C4.7885 4.00503 4.94627 4.06884 5.06354 4.18352L6.99954 6.11852L8.93554 4.18352C8.99315 4.1246 9.06188 4.07771 9.13774 4.04554C9.2136 4.01337 9.29508 3.99656 9.37748 3.9961C9.45988 3.99564 9.54155 4.01153 9.61777 4.04285C9.69398 4.07417 9.76323 4.1203 9.82149 4.17857C9.87976 4.23683 9.92589 4.30608 9.95721 4.38229C9.98853 4.45851 10.0044 4.54018 10.004 4.62258C10.0035 4.70497 9.98669 4.78646 9.95452 4.86232C9.92235 4.93818 9.87545 5.00691 9.81654 5.06452L7.88154 7.00052L9.81654 8.93652C9.93122 9.05379 9.99502 9.21155 9.99411 9.37557C9.99319 9.5396 9.92763 9.69664 9.81164 9.81262C9.69566 9.9286 9.53862 9.99417 9.3746 9.99508C9.21058 9.996 9.05281 9.9322 8.93554 9.81752L6.99954 7.88252L5.06354 9.81752C5.00593 9.87643 4.93721 9.92333 4.86135 9.9555C4.78549 9.98767 4.704 10.0045 4.6216 10.0049C4.5392 10.0054 4.45753 9.9895 4.38131 9.95818C4.3051 9.92686 4.23585 9.88073 4.17759 9.82247C4.11932 9.7642 4.0732 9.69496 4.04188 9.61874C4.01056 9.54253 3.99467 9.46086 3.99513 9.37846C3.99559 9.29606 4.01239 9.21457 4.04456 9.13871C4.07673 9.06285 4.12363 8.99413 4.18254 8.93652L6.11754 7.00052Z" fill="white"></path></g><defs><clippath id="clip0_38845_9816"><rect width="14" height="14" fill="white"></rect></clippath></defs></svg></div><div class="btn-animate" style="margin-top: 10px; transform: translateX(-5px); opacity: 0; pointer-events: none; filter: blur(1px); transition: opacity 110ms cubic-bezier(0.4, 0, 1, 1), filter 110ms cubic-bezier(0.4, 0, 1, 1); will-change: opacity, filter;"><div class=" btn-animate" style="position: relative; pointer-events: none; display: inline-block;"><div><div class="imt-fb-round-button"><svg class="imt-fb-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" style="width: 24px; height: 24px;"><path d="M17 8.66797H11.375" stroke="#ED6D8F" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12.625 15.332L7 15.332" stroke="#ED6D8F" stroke-linecap="round" stroke-linejoin="round"></path><path d="M15.125 17C16.1605 17 17 16.1605 17 15.125C17 14.0895 16.1605 13.25 15.125 13.25C14.0895 13.25 13.25 14.0895 13.25 15.125C13.25 16.1605 14.0895 17 15.125 17Z" stroke="#ED6D8F" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.875 10.75C9.91053 10.75 10.75 9.91053 10.75 8.875C10.75 7.83947 9.91053 7 8.875 7C7.83947 7 7 7.83947 7 8.875C7 9.91053 7.83947 10.75 8.875 10.75Z" stroke="#ED6D8F" stroke-linecap="round" stroke-linejoin="round"></path><rect x="3" y="4" width="18" height="16" rx="1.66667" stroke="#ED6D8F"></rect></svg></div></div></div></div><div class="btn-animate" style="margin-top: 10px; transform: translateX(-5px); opacity: 0; pointer-events: none; filter: blur(1px); transition: opacity 110ms cubic-bezier(0.4, 0, 1, 1), filter 110ms cubic-bezier(0.4, 0, 1, 1); will-change: opacity, filter;"><div class=" btn-animate" style="position: relative; pointer-events: none; display: inline-block;"><div><div class="imt-fb-round-button"><svg class="imt-fb-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none"><mask id="mask0_43829_2633" maskUnits="userSpaceOnUse" x="0" y="0" width="20" height="20" style="mask-type: alpha;"><rect width="20" height="20" fill="#D9D9D9"></rect></mask><g mask="url(#mask0_43829_2633)"><path d="M9.99546 12.2609C10.1639 12.2609 10.305 12.2055 10.4188 12.0946C10.5327 11.9838 10.5896 11.8441 10.5896 11.6755C10.5896 11.507 10.5342 11.3659 10.4234 11.2521C10.3124 11.1384 10.1727 11.0815 10.0042 11.0815C9.83574 11.0815 9.69463 11.1369 9.58088 11.2478C9.46699 11.3586 9.41005 11.4982 9.41005 11.6667C9.41005 11.8353 9.46546 11.9765 9.5763 12.0903C9.68727 12.204 9.82699 12.2609 9.99546 12.2609ZM9.99546 10.1936C10.148 10.1936 10.2771 10.1418 10.3828 10.0382C10.4886 9.93443 10.5415 9.80568 10.5415 9.65193V5.20318C10.5415 5.04943 10.49 4.92075 10.3871 4.81713C10.2844 4.71338 10.1567 4.66151 10.0042 4.66151C9.85171 4.66151 9.72261 4.71338 9.61692 4.81713C9.51109 4.92075 9.45817 5.04943 9.45817 5.20318V9.65193C9.45817 9.80568 9.50963 9.93443 9.61255 10.0382C9.71532 10.1418 9.84296 10.1936 9.99546 10.1936ZM5.03192 14.5846L3.55359 16.063C3.34262 16.2739 3.10032 16.3221 2.82671 16.2076C2.55324 16.093 2.4165 15.8864 2.4165 15.5878V3.75776C2.4165 3.38262 2.54602 3.06554 2.80505 2.80651C3.06407 2.54748 3.38116 2.41797 3.7563 2.41797H16.2434C16.6185 2.41797 16.9356 2.54748 17.1946 2.80651C17.4537 3.06554 17.5832 3.38262 17.5832 3.75776V13.2448C17.5832 13.62 17.4537 13.9371 17.1946 14.1961C16.9356 14.4551 16.6185 14.5846 16.2434 14.5846H5.03192ZM4.58317 13.5013H16.2434C16.3075 13.5013 16.3663 13.4746 16.4196 13.4211C16.4731 13.3678 16.4998 13.309 16.4998 13.2448V3.75776C16.4998 3.69359 16.4731 3.63484 16.4196 3.58151C16.3663 3.52804 16.3075 3.5013 16.2434 3.5013H3.7563C3.69213 3.5013 3.63338 3.52804 3.58005 3.58151C3.52657 3.63484 3.49984 3.69359 3.49984 3.75776V14.5928L4.58317 13.5013Z" fill="#ED6D8F"></path></g></svg></div></div></div></div><div hidden="" id="immersive-translate-popup-overlay" class="immersive-translate-popup-overlay"><div class="immersive-translate-popup-wrapper" style="position: fixed; bottom: 30px; right: 65px;"></div></div></div></div></template></div></html>

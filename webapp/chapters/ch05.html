@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 5 章　Triton 的优势与局限 — 进阶量化 · GPU MODE</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/style.css"></head>
+<body>
+<header class="topbar"><a class="brand" href="../index.html">进阶量化 · GPU MODE<span>Triton 与 CUDA</span></a>
+<nav class="chapnav"><a href="../all.html">全文阅读</a><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/">英文原文 ↗</a></nav></header>
+<div class="layout"><aside class="sidebar"><nav class="toc" id="toc"><h2>章节导航</h2>
+<ol class="book-toc"><li><a href="ch00.html">导论 · GPU MODE 第 7 讲：进阶量化</a></li><li><a href="ch01.html">第 1 章 · 量化概览</a></li><li><a href="ch02.html">第 2 章 · 动态量化内核</a></li><li><a href="ch03.html">第 3 章 · 仅权重量化内核</a></li><li><a href="ch04.html">第 4 章 · INT4 仅权重量化内核</a></li><li><a href="ch05.html">第 5 章 · Triton 的优势与局限</a></li><li><a href="ch06.html">第 6 章 · 问答环节</a></li><li><a href="references.html">附录 · 作者介绍、术语与来源</a></li></ol><h2>本页目录</h2></nav></aside>
+<main class="main"><article id="content" class="prose"></article>
+<noscript>此页需要 JavaScript 排版。也可直接阅读目录中的完整译文 Markdown 文件。</noscript>
+<nav class="pager"><a class="prev" href="ch04.html"><span class="dir">← 上一章</span><div class="ttl">第 4 章　INT4 仅权重量化内核</div></a><a class="next" href="ch06.html"><span class="dir">下一章 →</span><div class="ttl">第 6 章　问答环节</div></a></nav>
+<footer class="pagefoot">原作者 Christian Mills · 2024-09-10 · 非官方中文译本 ·
+依据用户提供的 HTML 制作 · 保留原文署名与权利说明</footer></main></div>
+<script type="application/json" id="chapter-data">"# 第 5 章　Triton 的优势与局限（Strengths and Limitations of Triton）\n\n> 译自 Christian Mills 的 [GPU MODE 第 7 讲](https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#strengths-and-limitations-of-triton)，原文发表于 2024 年 9 月 10 日。\n\n\u003ca id=\"strengths-and-limitations-of-triton\">\u003c/a>\n\n## Triton 的优势与局限（Strengths and Limitations of Triton）\n\n**优势：**\n\n- **易于上手**：无须深入掌握 CUDA，也可以快速开发高效的 GPU 内核。\n- **操作融合**：擅长将多个操作融合到一个内核中，减少额外开销。\n- **INT8 支持**：能够很好地处理 INT8 量化。\n- **与 Torch Compile 集成**：可以与 Torch Compile 顺畅配合，自动生成内核。\n- **灵活性**：容易添加自定义操作，也容易修改已有内核。\n\n**局限：**\n\n- **自定义数据类型**：对 INT4 等自定义数据类型的支持有限。\n- **复杂操作**：对于需要精细控制数据布局和计算过程的复杂操作，可能难以高效处理。\n- **批量大小大于 1 的 INT4 仅权重量化**：当时还没有高效的解决方案。\n- **L2 缓存问题**：仅权重量化在批量大小大于 1 时，可能存在 L2 缓存利用不足的问题。\n- **配置一致性**：选择最优内核配置的启发式规则，表现可能不够稳定。\n"</script>
+<script src="../assets/marked.min.js"></script><script src="../assets/app.js"></script>
+</body></html>

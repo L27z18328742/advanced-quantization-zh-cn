@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 2 章　动态量化内核 — 进阶量化 · GPU MODE</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/style.css"></head>
+<body>
+<header class="topbar"><a class="brand" href="../index.html">进阶量化 · GPU MODE<span>Triton 与 CUDA</span></a>
+<nav class="chapnav"><a href="../all.html">全文阅读</a><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/">英文原文 ↗</a></nav></header>
+<div class="layout"><aside class="sidebar"><nav class="toc" id="toc"><h2>章节导航</h2>
+<ol class="book-toc"><li><a href="ch00.html">导论 · GPU MODE 第 7 讲：进阶量化</a></li><li><a href="ch01.html">第 1 章 · 量化概览</a></li><li><a href="ch02.html">第 2 章 · 动态量化内核</a></li><li><a href="ch03.html">第 3 章 · 仅权重量化内核</a></li><li><a href="ch04.html">第 4 章 · INT4 仅权重量化内核</a></li><li><a href="ch05.html">第 5 章 · Triton 的优势与局限</a></li><li><a href="ch06.html">第 6 章 · 问答环节</a></li><li><a href="references.html">附录 · 作者介绍、术语与来源</a></li></ol><h2>本页目录</h2></nav></aside>
+<main class="main"><article id="content" class="prose"></article>
+<noscript>此页需要 JavaScript 排版。也可直接阅读目录中的完整译文 Markdown 文件。</noscript>
+<nav class="pager"><a class="prev" href="ch01.html"><span class="dir">← 上一章</span><div class="ttl">第 1 章　量化概览</div></a><a class="next" href="ch03.html"><span class="dir">下一章 →</span><div class="ttl">第 3 章　仅权重量化内核</div></a></nav>
+<footer class="pagefoot">原作者 Christian Mills · 2024-09-10 · 非官方中文译本 ·
+依据用户提供的 HTML 制作 · 保留原文署名与权利说明</footer></main></div>
+<script type="application/json" id="chapter-data">"# 第 2 章　动态量化内核（Dynamic Quantization Kernels）\n\n> 译自 Christian Mills 的 [GPU MODE 第 7 讲](https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#dynamic-quantization-kernels)，原文发表于 2024 年 9 月 10 日。\n\n\u003ca id=\"dynamic-quantization-kernels\">\u003c/a>\n\n## 动态量化内核（Dynamic Quantization Kernels）\n\n- **最初的方法**：利用 `torch.compile()`，从 Python 代码生成 Triton 内核。\n- **数学表达**：\n  - 基本线性运算：`Y = X.W`。\n  - 将缩放因子提取出来后的量化运算：`Y = Sx * Sw * (Xint.Wint)`，其中 `Xint` 和 `Wint` 分别是 `x` 和 `w` 的量化版本。\n  - **Triton 教程**：[矩阵乘法](https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html)。\n- **逐词元与逐通道量化**：GPU 的并行处理能力使这两种量化方式能够高效执行。\n\n![第 7 页：逐词元、逐通道量化与缩放计算](../assets/images/dynamic-quantization-slide-7.png)\n\n*第 7 页。*\n\n- **挑战**：\n  - **内存占用增加**：INT8 乘法的中间结果以 INT32 实体化存储时，内存开销会高于 BF16。\n- **解决办法**：\n  - 将重新缩放操作（`sw`）融合进 Triton 内核，避免将 INT32 中间结果单独实体化存储。\n  - **实现方式**：\n    - 修改 Triton 内核，加入重新缩放所需的乘法。\n    - 在 Torch Compile 中使用 `config.force_fuse_int_mm_with_mul = True`，强制执行融合。\n    - 对应代码：`torch/_inductor/kernel/mm.py` 中的 [`tuned_fused_int_mm_mul`](https://github.com/pytorch/pytorch/blob/26e5572dd24acd69b08eb94577f8796a480c9fe0/torch/_inductor/kernel/mm.py#L757)。\n- **结果**：\n  - **性能**：相较基线提升约 14%。\n  - **内存**：峰值内存占用略有改善。\n- **关键结论**：Triton 能灵活地融合操作，因此无须投入大量内核开发工作，也能获得显著的性能提升。\n\n> **译者注**：公式中的 `.` 表示矩阵乘法，而不是逐元素乘法。原文用简写表示缩放关系；逐词元、逐通道的缩放因子需要按相应维度广播。“实体化存储”指显式产生并保存中间结果，不表示内核内部完全没有 INT32 累加。上面的配置项和源码链接均保留原文版本语境。\n"</script>
+<script src="../assets/marked.min.js"></script><script src="../assets/app.js"></script>
+</body></html>

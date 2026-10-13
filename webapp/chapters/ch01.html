@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 1 章　量化概览 — 进阶量化 · GPU MODE</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/style.css"></head>
+<body>
+<header class="topbar"><a class="brand" href="../index.html">进阶量化 · GPU MODE<span>Triton 与 CUDA</span></a>
+<nav class="chapnav"><a href="../all.html">全文阅读</a><a href="https://christianjmills.com/posts/cuda-mode-notes/lecture-007/">英文原文 ↗</a></nav></header>
+<div class="layout"><aside class="sidebar"><nav class="toc" id="toc"><h2>章节导航</h2>
+<ol class="book-toc"><li><a href="ch00.html">导论 · GPU MODE 第 7 讲：进阶量化</a></li><li><a href="ch01.html">第 1 章 · 量化概览</a></li><li><a href="ch02.html">第 2 章 · 动态量化内核</a></li><li><a href="ch03.html">第 3 章 · 仅权重量化内核</a></li><li><a href="ch04.html">第 4 章 · INT4 仅权重量化内核</a></li><li><a href="ch05.html">第 5 章 · Triton 的优势与局限</a></li><li><a href="ch06.html">第 6 章 · 问答环节</a></li><li><a href="references.html">附录 · 作者介绍、术语与来源</a></li></ol><h2>本页目录</h2></nav></aside>
+<main class="main"><article id="content" class="prose"></article>
+<noscript>此页需要 JavaScript 排版。也可直接阅读目录中的完整译文 Markdown 文件。</noscript>
+<nav class="pager"><a class="prev" href="ch00.html"><span class="dir">← 上一章</span><div class="ttl">导论　GPU MODE 第 7 讲：进阶量化</div></a><a class="next" href="ch02.html"><span class="dir">下一章 →</span><div class="ttl">第 2 章　动态量化内核</div></a></nav>
+<footer class="pagefoot">原作者 Christian Mills · 2024-09-10 · 非官方中文译本 ·
+依据用户提供的 HTML 制作 · 保留原文署名与权利说明</footer></main></div>
+<script type="application/json" id="chapter-data">"# 第 1 章　量化概览（Overview of Quantization）\n\n> 译自 Christian Mills 的 [GPU MODE 第 7 讲](https://christianjmills.com/posts/cuda-mode-notes/lecture-007/#overview-of-quantization)，原文发表于 2024 年 9 月 10 日。\n\n\u003ca id=\"overview-of-quantization\">\u003c/a>\n\n## 量化概览（Overview of Quantization）\n\n- **目标**：通过降低权重和／或激活的精度，实现更快的推理。\n- **类型**：动态量化与仅权重量化。\n\n**动态量化（Dynamic Quantization）：**\n\n![第 3 页：动态量化流程](../assets/images/dynamic-quantization-flow.png)\n\n*第 3 页：动态量化流程。*\n\n- **权重**：量化为整数。\n- **激活**：量化为整数。\n- **乘法**：执行整数乘法，速度比浮点乘法更快。\n- **累加**：累加计算结果，重新缩放，再以浮点形式输出。\n- **优点**：适用于计算受限（compute-bound）的模型，例如 Segment Anything。\n- **示例**：两个 INT8 张量相乘的速度，约为两个 BF16 张量相乘的 4 倍。\n\n**仅权重量化（Weight-only Quantization）：**\n\n![第 3 页：仅权重量化](../assets/images/weight-only-quantization-flow.png)\n\n*第 3 页：仅权重量化。*\n\n- **权重**：量化为整数。\n- **激活**：保持原始精度，即浮点格式。\n- **乘法**：可以直接让整数权重与浮点激活相乘，使用混合数据类型（mixed-dtype）；也可以先对权重反量化，再进行乘法。\n- **优点**：\n  - 权重加载非常快。\n  - 适用于内存带宽受限（memory-bound）的模型，例如 LLaMA。\n  - 因为没有量化激活，准确性高于动态量化。\n- **为什么仅权重量化不量化激活？**\n  - 在内存带宽受限的场景中，首要任务是快速加载权重。\n  - 量化激活会引入额外的计算与内存开销，在这些场景中，开销超过了收益。\n  - 对于 LLaMA 这类内存带宽受限的模型，与仅权重量化相比，动态量化往往反而会降低速度。\n\n**术语说明：**\n\n“INT4 量化”这个说法不够明确。应当同时说明权重和激活的数据类型，例如 W4A16，或采用 FP32 累加的 W4BF16。\n\n**量化时需要考虑的因素：**\n\n- **模型是否容易量化**：不同模型对量化的适应程度并不相同。\n  - **分类模型**：通常较容易量化。\n  - **回归模型**：量化更具挑战。\n  - **GPTQ（Generative Pretrained Transformer Quantization）**：GPT Fast 中为 INT4 实现了这一方法，使量化不必依赖某一种特定模型。\n- **量化感知训练（Quantization-Aware Training，QAT）**：在训练中模拟量化，以提高模型适应量化的能力。\n  - 梯度通过模拟量化算子进行反向传播。\n- **量化粒度**：\n  - **逐张量（per-tensor）**：整个张量使用一个缩放因子。\n  - **逐通道（per-channel）**：每个输出通道使用不同的缩放因子。\n  - **逐词元、逐向量、逐块（per-token、per-vector、per-block）**：其他可采用的粒度。\n  - 粒度越细，准确性通常越好，但也需要更多内存来存储更多缩放因子。\n- **精度选择**：可以采用 8 位、4 位，甚至 1 位量化。\n  - **位宽**：更低的位宽，例如 1 位，虽然可行，但往往会导致准确性明显下降，更适合简单任务。\n- **离群值与分布**：量化效果受权重和激活的分布影响，离群值会损害准确性。\n\n> **译者注**：本节“约 4 倍”是原文的示例数字，并非所有 GPU、矩阵形状和端到端推理场景都适用。模型是否受计算或带宽限制，也与批量大小、算子形状及硬件有关。图内英文保留，中文图题和相邻文字对应说明其含义。\n"</script>
+<script src="../assets/marked.min.js"></script><script src="../assets/app.js"></script>
+</body></html>
